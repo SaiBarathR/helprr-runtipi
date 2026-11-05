@@ -1,0 +1,24 @@
+{
+  "name": "Helprr",
+  "id": "helprr",
+  "available": true,
+  "short_desc": "Sonarr, Radarr, qBittorrent and Jellyfin in one app on your phone.",
+  "author": "SaiBarathR",
+  "port": 3050,
+  "categories": [
+    "media"
+  ],
+  "description": "Helprr brings your media apps into one web app you install on your phone, with push notifications.",
+  "tipi_version": 1013000,
+  "version": "1.13.0",
+  "source": "https://github.com/SaiBarathR/helprr",
+  "website": "https://saibarathr.github.io/helprr/",
+  "exposable": true,
+  "dynamic_config": true,
+  "supported_architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "form_fields": [],
+  "min_tipi_version": "4.12.0"
+}

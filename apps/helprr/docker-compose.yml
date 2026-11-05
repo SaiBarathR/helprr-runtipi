@@ -1,0 +1,160 @@
+services:
+  helprr-db:
+    image: postgres:16-alpine
+    container_name: helprr-db
+    restart: unless-stopped
+    command: ["postgres"]
+    depends_on:
+      helprr-init:
+        condition: service_healthy
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/helprr-auth/postgres_password
+      - POSTGRES_DB=helprr
+    volumes:
+      - ${APP_DATA_DIR}/data/db-data:/var/lib/postgresql/data
+      - ${APP_DATA_DIR}/data/db-auth:/helprr-auth:ro
+    networks:
+      - helprr-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  helprr-redis:
+    image: redis:8-alpine
+    container_name: helprr-redis
+    restart: unless-stopped
+    depends_on:
+      helprr-init:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        chown -R redis /data 2>/dev/null || true
+        [ -s /helprr-auth/redis_password ] || { echo 'helprr-redis: no password from helprr-init' >&2; exit 1; }
+        exec docker-entrypoint.sh redis-server - --appendonly yes <<EOF
+        requirepass "$(sed 's/[\\"]/\\&/g' /helprr-auth/redis_password)"
+        EOF
+    volumes:
+      - ${APP_DATA_DIR}/data/redis-data:/data
+      - ${APP_DATA_DIR}/data/redis-auth:/helprr-auth:ro
+    networks:
+      - helprr-net
+    healthcheck:
+      test: [ "CMD-SHELL", "REDISCLI_AUTH=\"$(cat /helprr-auth/redis_password)\" redis-cli ping | grep -q PONG" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  helprr-init:
+    image: ghcr.io/saibarathr/helprr:1.13.0
+    container_name: helprr-init
+    user: "0:0"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        rm -f /tmp/helprr-init-done
+        /bin/sh /app/init-secrets.sh || exit 1
+        touch /tmp/helprr-init-done
+        trap "exit 0" TERM
+        while true; do sleep 3600 & wait; done
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/helprr-init-done"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5m
+      start_interval: 2s
+    network_mode: none
+    environment:
+      - JWT_SECRET=
+      - VAPID_PUBLIC_KEY=
+      - VAPID_PRIVATE_KEY=
+      - POSTGRES_PASSWORD=
+      - REDIS_PASSWORD=
+      - TWITCH_PUID=1000
+      - TWITCH_PGID=1000
+    volumes:
+      - ${APP_DATA_DIR}/data/secrets:/secrets
+      - ${APP_DATA_DIR}/data/db-auth:/auth/db
+      - ${APP_DATA_DIR}/data/redis-auth:/auth/redis
+
+  helprr:
+    x-runtipi:
+      is_main: true
+      internal_port: 3050
+    image: ghcr.io/saibarathr/helprr:1.13.0
+    container_name: helprr
+    restart: unless-stopped
+    stop_grace_period: 45s
+    depends_on:
+      helprr-init:
+        condition: service_healthy
+      helprr-db:
+        condition: service_healthy
+      helprr-redis:
+        condition: service_healthy
+    environment:
+      - TZ=${TZ}
+      - LOG_DIR=/app/logs
+      - DATABASE_URL=
+      - POSTGRES_PASSWORD=
+      - REDIS_URL=redis://helprr-redis:6379
+      - REDIS_PASSWORD=
+      - APP_PASSWORD=
+      - HELPRR_ADMIN_USERNAME=
+      - HELPRR_ADMIN_PASSWORD_RESET=
+      - TRUST_FORWARDED_PROTO=
+      - TRUSTED_PROXY_HOPS=
+      - JWT_SECRET=
+      - VAPID_PUBLIC_KEY=
+      - VAPID_PRIVATE_KEY=
+      - VAPID_SUBJECT=
+      - APP_ORIGIN=
+      - ARR_CALLBACK_ORIGIN=
+      - HELPRR_CUSTOM_HEADERS=
+      - EXTRA_ALLOWED_IMAGE_HOSTS=
+      - IMAGE_CACHE_DIR=/app/image-cache
+      - IMAGE_CACHE_TTL_SECONDS=
+      - IMAGE_CACHE_STALE_SECONDS=
+      - IMAGE_CACHE_MAX_BYTES=
+      - IMAGE_CACHE_MAX_ENTRIES=
+      - IMAGE_UPSTREAM_FETCH_TIMEOUT_MS=
+      - IMAGE_UPSTREAM_MAX_BYTES=
+      - IMAGE_UPSTREAM_MAX_PIXELS=
+      - IMAGE_PROCESSING_QUEUE_WAIT_MS=
+      - IMAGE_PROCESSING_QUEUE_MAX=
+      - IMAGE_PROCESSING_QUEUE_PER_USER_MAX=
+      - IMAGE_FETCH_RATE_BURST=
+      - IMAGE_FETCH_RATE_REFILL_PER_MINUTE=
+      - IMAGE_QUOTA_LOCK_WAIT_MS=
+      - TMDB_CACHE_DEFAULT_TTL_SECONDS=
+      - TMDB_CACHE_DISCOVER_TTL_SECONDS=
+      - TMDB_CACHE_DETAILS_TTL_SECONDS=
+      - TMDB_CACHE_STATIC_TTL_SECONDS=
+      - TMDB_CACHE_STALE_SECONDS=
+      - CACHE_LOCK_TTL_MS=
+    volumes:
+      - ${APP_DATA_DIR}/data/secrets:/app/secrets:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - helprr-net
+    healthcheck:
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3050/api/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  helprr-net:
+    driver: bridge
+
+x-runtipi:
+  schema_version: 2
