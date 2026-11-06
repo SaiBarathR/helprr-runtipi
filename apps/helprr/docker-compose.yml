@@ -50,7 +50,7 @@ services:
       retries: 5
 
   helprr-init:
-    image: ghcr.io/saibarathr/helprr:1.13.0
+    image: ghcr.io/saibarathr/helprr:1.13.1
     container_name: helprr-init
     user: "0:0"
     entrypoint:
@@ -88,7 +88,7 @@ services:
     x-runtipi:
       is_main: true
       internal_port: 3050
-    image: ghcr.io/saibarathr/helprr:1.13.0
+    image: ghcr.io/saibarathr/helprr:1.13.1
     container_name: helprr
     restart: unless-stopped
     stop_grace_period: 45s

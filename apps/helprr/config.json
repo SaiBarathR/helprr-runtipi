@@ -9,8 +9,8 @@
     "media"
   ],
   "description": "Helprr brings your media apps into one web app you install on your phone, with push notifications.",
-  "tipi_version": 1013000,
-  "version": "1.13.0",
+  "tipi_version": 1013001,
+  "version": "1.13.1",
   "source": "https://github.com/SaiBarathR/helprr",
   "website": "https://saibarathr.github.io/helprr/",
   "exposable": true,
