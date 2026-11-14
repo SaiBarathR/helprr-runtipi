@@ -50,7 +50,7 @@ services:
       retries: 5
 
   helprr-init:
-    image: ghcr.io/saibarathr/helprr:1.14.0
+    image: ghcr.io/saibarathr/helprr:1.15.0
     container_name: helprr-init
     user: "0:0"
     entrypoint:
@@ -83,12 +83,13 @@ services:
       - ${APP_DATA_DIR}/data/secrets:/secrets
       - ${APP_DATA_DIR}/data/db-auth:/auth/db
       - ${APP_DATA_DIR}/data/redis-auth:/auth/redis
+      - ${APP_DATA_DIR}/data/backups:/app/backups
 
   helprr:
     x-runtipi:
       is_main: true
       internal_port: 3050
-    image: ghcr.io/saibarathr/helprr:1.14.0
+    image: ghcr.io/saibarathr/helprr:1.15.0
     container_name: helprr
     restart: unless-stopped
     stop_grace_period: 45s
@@ -118,6 +119,9 @@ services:
       - APP_ORIGIN=
       - ARR_CALLBACK_ORIGIN=
       - HELPRR_CUSTOM_HEADERS=
+      - HELPRR_TRUSTED_AUTH_HEADER=
+      - HELPRR_TRUSTED_AUTH_SECRET=
+      - HELPRR_TRUSTED_AUTH_SECRET_HEADER=
       - EXTRA_ALLOWED_IMAGE_HOSTS=
       - IMAGE_CACHE_DIR=/app/image-cache
       - IMAGE_CACHE_TTL_SECONDS=
@@ -141,6 +145,7 @@ services:
       - CACHE_LOCK_TTL_MS=
     volumes:
       - ${APP_DATA_DIR}/data/secrets:/app/secrets:ro
+      - ${APP_DATA_DIR}/data/backups:/app/backups
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
