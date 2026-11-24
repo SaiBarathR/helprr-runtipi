@@ -35,7 +35,7 @@ services:
       - |
         chown -R redis /data 2>/dev/null || true
         [ -s /helprr-auth/redis_password ] || { echo 'helprr-redis: no password from helprr-init' >&2; exit 1; }
-        exec docker-entrypoint.sh redis-server - --appendonly yes <<EOF
+        exec docker-entrypoint.sh redis-server - --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction <<EOF
         requirepass "$(sed 's/[\\"]/\\&/g' /helprr-auth/redis_password)"
         EOF
     volumes:
@@ -50,7 +50,7 @@ services:
       retries: 5
 
   helprr-init:
-    image: ghcr.io/saibarathr/helprr:1.18.0
+    image: ghcr.io/saibarathr/helprr:1.18.1
     container_name: helprr-init
     user: "0:0"
     entrypoint:
@@ -89,7 +89,7 @@ services:
     x-runtipi:
       is_main: true
       internal_port: 3050
-    image: ghcr.io/saibarathr/helprr:1.18.0
+    image: ghcr.io/saibarathr/helprr:1.18.1
     container_name: helprr
     restart: unless-stopped
     stop_grace_period: 45s
